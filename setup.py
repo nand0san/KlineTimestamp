@@ -8,7 +8,7 @@ setup(
     version="0.1.0",
     author="nand0san",
     author_email="",
-    description="Una librería Python para manejar eficientemente timestamps dentro de klines (velas).",
+    description="KlineTimestamp is a Python library designed to efficiently handle timestamps within discrete time intervals, commonly known as klines or candlesticks, often used in financial data analysis.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/nand0san/kline_timestamp",
