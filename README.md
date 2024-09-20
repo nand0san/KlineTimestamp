@@ -1,14 +1,3 @@
-¡Claro! He revisado el README y realicé las siguientes actualizaciones:
-
-- **Importaciones y Nombres de Paquetes**: Cambié las importaciones para usar el nombre del paquete en minúsculas `kline_timestamp` en lugar de `KlineTimestamp`, siguiendo las convenciones de Python.
-- **Sección de Autor**: Mantengo tu nombre de usuario `nand0san` con el enlace a tu perfil de GitHub.
-- **Sección de Contribución**: Actualicé el enlace de GitHub para que apunte a `https://github.com/nand0san/kline_timestamp`.
-- **Sección de Contacto**: Agregué tu dirección de correo electrónico (por favor, reemplaza `[tu_email@example.com]` con tu correo real si lo deseas).
-- **Eliminación de Notas**: Eliminé la nota al final que indicaba reemplazar marcadores de posición, ya que ya hemos actualizado toda la información.
-
-Aquí tienes el `README.md` actualizado:
-
----
 
 # KlineTimestamp
 
