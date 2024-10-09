@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="kline_timestamp",  # Nombre del paquete en minúsculas
-    version="0.1.0",
+    version="0.1.1",
     author="nand0san",
     author_email="",
     description="KlineTimestamp is a Python library designed to efficiently handle timestamps within discrete time intervals, commonly known as klines or candlesticks, often used in financial data analysis.",
