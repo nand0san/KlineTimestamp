@@ -1,252 +1,134 @@
+from dataclasses import dataclass, field
 from typing import Union
 from datetime import datetime, timedelta, timezone
 import pytz
 import pandas as pd
 
 
+@dataclass(frozen=True)
 class KlineTimestamp:
+    timestamp_ms: int
+    interval: str
+    tzinfo: Union[pytz.BaseTzInfo, str] = 'UTC'
+    open: int = field(init=False)
+    close: int = field(init=False)
 
-    def __init__(self,
-                 timestamp_ms: int,
-                 interval: str,
-                 tzinfo: Union[pytz.timezone, str] = 'UTC'):
-        """
-        Initializes a new instance of the kline_timestamp class.
+    # Definición de tick_milliseconds como campo de clase
+    tick_milliseconds: dict = field(default_factory=lambda: {
+        '1m': 60 * 1000,
+        '3m': 3 * 60 * 1000,
+        '5m': 5 * 60 * 1000,
+        '15m': 15 * 60 * 1000,
+        '30m': 30 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '2h': 2 * 60 * 60 * 1000,
+        '4h': 4 * 60 * 60 * 1000,
+        '6h': 6 * 60 * 60 * 1000,
+        '8h': 8 * 60 * 60 * 1000,
+        '12h': 12 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000,
+        '3d': 3 * 24 * 60 * 60 * 1000,
+        '1w': 7 * 24 * 60 * 60 * 1000
+    }, init=False, repr=False)
 
-        The `timestamp_ms` parameter represents the timestamp in milliseconds. It is a required input.
+    def __post_init__(self):
+        object.__setattr__(self, 'interval', self.interval.lower())
+        if self.interval not in self.tick_milliseconds:
+            raise ValueError(f"Invalid interval: {self.interval}. Valid intervals are: {list(self.tick_milliseconds.keys())}.")
 
-        The `interval` parameter specifies the interval of the timestamp. If an invalid interval is provided, a ValueError will be raised.
+        tick_ms = self.tick_milliseconds[self.interval]
+        open_ts = (self.timestamp_ms // tick_ms) * tick_ms
+        close_ts = open_ts + tick_ms - 1
+        object.__setattr__(self, 'tick_ms', tick_ms)
+        object.__setattr__(self, 'open', open_ts)
+        object.__setattr__(self, 'close', close_ts)
 
-        Default kline sizes are: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w.
-
-        The `tzinfo` parameter represents the timezone of the timestamp. It is an optional parameter that defaults to 'UTC'. If a string is provided as the timezone, it should be a valid IANA timezone identifier. If a pytz.timezone object is provided, it should be the timezone of the timestamp.
-
-        If the `interval` parameter is not valid, a ValueError will be raised.
-
-        The `__init__` method initializes the `interval`, `tick_ms`, `timestamp_ms`, and `tzinfo` attributes of the kline_timestamp instance. It also raises a ValueError if the `interval` parameter is not valid.
-
-        :param timestamp_ms: The timestamp in milliseconds.
-        :type timestamp_ms: int
-        :param interval: The interval of the timestamp.
-        :type interval: str
-        :param tzinfo: The timezone of the timestamp. Default is 'UTC'.
-        :type tzinfo: str or pytz.timezone, optional. Default is 'UTC'.
-
-        :raises ValueError: If the interval is not valid.
-        """
-
-        tick_milliseconds = {
-            '1m': 60 * 1000,
-            '3m': 3 * 60 * 1000,
-            '5m': 5 * 60 * 1000,
-            '15m': 15 * 60 * 1000,
-            '30m': 30 * 60 * 1000,
-            '1h': 60 * 60 * 1000,
-            '2h': 2 * 60 * 60 * 1000,
-            '4h': 4 * 60 * 60 * 1000,
-            '6h': 6 * 60 * 60 * 1000,
-            '8h': 8 * 60 * 60 * 1000,
-            '12h': 12 * 60 * 60 * 1000,
-            '1d': 24 * 60 * 60 * 1000,
-            '3d': 3 * 24 * 60 * 60 * 1000,
-            '1w': 7 * 24 * 60 * 60 * 1000
-        }
-
-        if interval not in tick_milliseconds:
-            raise ValueError(f"Invalid interval: {interval}. Valid intervals are: {list(tick_milliseconds.keys())}.")
-        self.interval = interval
-        self.tick_ms = tick_milliseconds[interval]
-        self.timestamp_ms = int(timestamp_ms)
-
-        self.open = self.get_candle_open_timestamp_ms()
-        self.close = self.get_candle_close_timestamp_ms()
-
-        if isinstance(tzinfo, str):
-            self.tzinfo = pytz.timezone(tzinfo)
+        if isinstance(self.tzinfo, str):
+            tz = pytz.timezone(self.tzinfo)
+        elif isinstance(self.tzinfo, pytz.BaseTzInfo):
+            tz = self.tzinfo
         else:
-            self.tzinfo = tzinfo
-
-    def get_candle_open_timestamp_ms(self) -> int:
-        """
-        This method returns the timestamp of the opening of the current candle (K-line) in milliseconds.
-
-        The timestamp is calculated by dividing the provided timestamp by the tick size (milliseconds per interval) and then multiplying it back by the tick size.
-
-        :return: The timestamp of the opening of the current candle in milliseconds.
-        """
-        return (self.timestamp_ms // self.tick_ms) * self.tick_ms
-
-    def get_candle_close_timestamp_ms(self) -> int:
-        """
-        This method returns the timestamp of the closing of the current candle (K-line) in milliseconds.
-
-        The timestamp is calculated by adding the tick size (milliseconds per interval) minus one millisecond to the opening timestamp.
-
-        :return: The timestamp of the closing of the current candle in milliseconds.
-        """
-        return self.get_candle_open_timestamp_ms() + self.tick_ms - 1
+            raise TypeError("tzinfo must be a string or pytz.timezone object")
+        object.__setattr__(self, 'tzinfo', tz)
 
     def to_datetime(self) -> datetime:
         """
-        This method returns the datetime object of the current open time for candle (K-line) in the provided timezone.
-
-        :return: The datetime object of the current open time for candle (K-line) in the provided time zone.
+        Retorna el objeto datetime en la zona horaria proporcionada.
         """
-        # Convert the timestamp to a timezone-aware UTC datetime object
-        dt_utc = datetime.fromtimestamp(self.get_candle_open_timestamp_ms() / 1000, tz=timezone.utc)
-        # Convert the UTC datetime to the provided local timezone
+        dt_utc = datetime.fromtimestamp(self.open / 1000, tz=timezone.utc)
         dt_local = dt_utc.astimezone(self.tzinfo)
         return dt_local
 
     def to_pandas_timestamp(self) -> pd.Timestamp:
         """
-        This method returns the pandas Timestamp object of the current open time for candle (K-line) in the provided timezone.
-
-        :return: The pandas Timestamp object of the current open time for candle (K-line) in the provided time zone.
+        Retorna un objeto pandas.Timestamp en la zona horaria proporcionada.
         """
-        return pd.Timestamp(self.get_candle_open_timestamp_ms(), unit='ms', tz='UTC').tz_convert(self.tzinfo)
+        return pd.Timestamp(self.open, unit='ms', tz='UTC').tz_convert(self.tzinfo)
+
+    def with_timezone(self, tzinfo: Union[str, pytz.BaseTzInfo]) -> 'KlineTimestamp':
+        """
+        Devuelve una nueva instancia de KlineTimestamp con una zona horaria actualizada.
+        """
+        return KlineTimestamp(self.timestamp_ms, self.interval, tzinfo)
 
     def __str__(self):
-        """
-        This method returns a string representation of the kline_timestamp instance. The string includes the ISO format of the datetime object, the interval, and the timezone.
+        return f"KlineTimestamp({self.to_datetime().isoformat()}, interval='{self.interval}', tz='{self.tzinfo.zone}')"
 
-        :return: A string representation of the kline_timestamp instance.
-        """
-        return f"kline_timestamp({self.to_datetime().isoformat()}, interval='{self.interval}', tz='{self.tzinfo.zone}')"
+    def __eq__(self, other: 'KlineTimestamp') -> bool:
+        if not isinstance(other, KlineTimestamp):
+            return NotImplemented
+        return self.open == other.open
 
-    __repr__ = __str__
+    def __lt__(self, other: 'KlineTimestamp') -> bool:
+        if not isinstance(other, KlineTimestamp):
+            return NotImplemented
+        return self.open < other.open
 
-    def update_timezone(self, tzinfo: Union[str, pytz.BaseTzInfo]) -> None:
-        """
-        Updates the timezone of the kline_timestamp instance.
+    def __le__(self, other: 'KlineTimestamp') -> bool:
+        if not isinstance(other, KlineTimestamp):
+            return NotImplemented
+        return self.open <= other.open
 
-        :param tzinfo: The new timezone, either as a string or pytz.timezone object.
-        :raises TypeError: If `tzinfo` is neither a string nor a pytz.timezone object.
-        """
-        if isinstance(tzinfo, str):
-            self.tzinfo = pytz.timezone(tzinfo)
-        elif isinstance(tzinfo, pytz.BaseTzInfo):
-            self.tzinfo = tzinfo
-        else:
-            raise TypeError("tzinfo must be a string or pytz.timezone object")
+    def __gt__(self, other: 'KlineTimestamp') -> bool:
+        if not isinstance(other, KlineTimestamp):
+            return NotImplemented
+        return self.open > other.open
+
+    def __ge__(self, other: 'KlineTimestamp') -> bool:
+        if not isinstance(other, KlineTimestamp):
+            return NotImplemented
+        return self.open >= other.open
 
     def __add__(self, other: timedelta) -> 'KlineTimestamp':
-        """
-        Adds a timedelta to this instance.
-
-        :param other: The timedelta to add.
-        :return: A new kline_timestamp.
-        :raises TypeError: If `other` is not a timedelta.
-        """
-        if isinstance(other, timedelta):
-            new_timestamp_ms = self.timestamp_ms + int(other.total_seconds() * 1000)
-            return KlineTimestamp(new_timestamp_ms, interval=self.interval, tzinfo=self.tzinfo)
-        else:
-            raise TypeError(f"Unsupported type for +: 'kline_timestamp' and '{type(other).__name__}'")
+        if not isinstance(other, timedelta):
+            raise TypeError(f"Unsupported type for +: 'KlineTimestamp' and '{type(other).__name__}'")
+        new_timestamp_ms = self.timestamp_ms + int(other.total_seconds() * 1000)
+        return KlineTimestamp(new_timestamp_ms, self.interval, self.tzinfo)
 
     def __sub__(self, other: Union[timedelta, 'KlineTimestamp']) -> Union['KlineTimestamp', timedelta]:
-        """
-        Subtracts a timedelta or another kline_timestamp from this instance.
-
-        :param other: The timedelta or kline_timestamp to subtract.
-        :return: A new kline_timestamp if subtracting a timedelta, or a timedelta if subtracting another kline_timestamp.
-        :raises TypeError: If `other` is neither a timedelta nor a kline_timestamp.
-        """
         if isinstance(other, timedelta):
             new_timestamp_ms = self.timestamp_ms - int(other.total_seconds() * 1000)
-            return KlineTimestamp(new_timestamp_ms, interval=self.interval, tzinfo=self.tzinfo)
+            return KlineTimestamp(new_timestamp_ms, self.interval, self.tzinfo)
         elif isinstance(other, KlineTimestamp):
-            diff_ms = self.timestamp_ms - other.timestamp_ms
-            return timedelta(milliseconds=diff_ms)
+            return timedelta(milliseconds=self.timestamp_ms - other.timestamp_ms)
         else:
-            raise TypeError(f"Unsupported type for -: 'kline_timestamp' and '{type(other).__name__}'")
+            raise TypeError(f"Unsupported type for -: 'KlineTimestamp' and '{type(other).__name__}'")
 
     def next(self) -> 'KlineTimestamp':
         """
-        This method returns a new kline_timestamp object representing the next candle (K-line).
-
-        :return: A new kline_timestamp object representing the next candle (K-line).
+        Retorna el siguiente KlineTimestamp.
         """
-        next_timestamp_ms = self.get_candle_open_timestamp_ms() + self.tick_ms
-        return KlineTimestamp(next_timestamp_ms, interval=self.interval, tzinfo=self.tzinfo)
+        next_timestamp_ms = self.open + self.tick_ms
+        return KlineTimestamp(next_timestamp_ms, self.interval, self.tzinfo)
 
     def prev(self) -> 'KlineTimestamp':
         """
-        This method returns a new kline_timestamp object representing the previous candle (K-line).
-
-        :return: A new kline_timestamp object representing the previous candle (K-line).
+        Retorna el KlineTimestamp anterior.
         """
-        prev_timestamp_ms = self.get_candle_open_timestamp_ms() - self.tick_ms
-        return KlineTimestamp(prev_timestamp_ms, interval=self.interval, tzinfo=self.tzinfo)
+        prev_timestamp_ms = self.open - self.tick_ms
+        return KlineTimestamp(prev_timestamp_ms, self.interval, self.tzinfo)
 
-    # Métodos de comparación
-    def __eq__(self, other: 'KlineTimestamp') -> bool:
-        """
-        This method compares the current kline_timestamp instance with another instance and returns True if they are equal, False otherwise.
-
-        :param other: The instance to compare with the current instance. It must be an instance of the kline_timestamp class.
-        :type other: KlineTimestamp
-        :return: True if the current instance is equal to the `other` instance, False otherwise.
-        :rtype: bool
-        """
-        if not isinstance(other, KlineTimestamp):
-            return NotImplemented
-        same_interval = self.interval == other.interval
-        same_tzinfo = self.tzinfo == other.tzinfo
-        same_timestamp = self.get_candle_open_timestamp_ms() == other.get_candle_open_timestamp_ms()
-        return same_interval and same_tzinfo and same_timestamp
-
-    def __lt__(self, other: 'KlineTimestamp') -> bool:
-        """
-        This method compares the current kline_timestamp instance with another instance and returns True if the current instance is less than the `other` instance, False otherwise.
-
-        :param other: The instance to compare with the current instance. It must be an instance of the kline_timestamp class.
-        :type other: KlineTimestamp
-        :return: True if the current instance is less than the `other` instance, False otherwise.
-        :rtype: bool
-        """
-        if not isinstance(other, KlineTimestamp):
-            return NotImplemented
-        return self.get_candle_open_timestamp_ms() < other.get_candle_open_timestamp_ms()
-
-    def __le__(self, other: 'KlineTimestamp') -> bool:
-        """
-        This method compares the current kline_timestamp instance with another instance and returns True if the current instance is less than or equal to the `other` instance, False otherwise.
-
-        :param other: The instance to compare with the current instance. It must be an instance of the kline_timestamp class.
-        :type other: KlineTimestamp
-        :return: True if the current instance is less than or equal to the `other` instance, False otherwise.
-        :rtype: bool
-        """
-        if not isinstance(other, KlineTimestamp):
-            return NotImplemented
-        return self.get_candle_open_timestamp_ms() <= other.get_candle_open_timestamp_ms()
-
-    def __gt__(self, other: 'KlineTimestamp') -> bool:
-        """
-        This method compares the current kline_timestamp instance with another instance and returns True if the current instance is greater than the `other` instance, False otherwise.
-
-        :param other: The instance to compare with the current instance. It must be an instance of the kline_timestamp class.
-        :type other: KlineTimestamp
-        :return: True if the current instance is greater than the `other` instance, False otherwise.
-        :rtype: bool
-        """
-        if not isinstance(other, KlineTimestamp):
-            return NotImplemented
-        return self.get_candle_open_timestamp_ms() > other.get_candle_open_timestamp_ms()
-
-    def __ge__(self, other: 'KlineTimestamp') -> bool:
-        """
-        This method compares the current kline_timestamp instance with another instance and returns True if the current instance is greater than or equal to the `other` instance, False otherwise.
-
-        :param other: The instance to compare with the current instance. It must be an instance of the kline_timestamp class.
-        :type other: KlineTimestamp
-        :return: True if the current instance is greater than or equal to the `other` instance, False otherwise.
-        :rtype: bool
-        """
-        if not isinstance(other, KlineTimestamp):
-            return NotImplemented
-        return self.get_candle_open_timestamp_ms() >= other.get_candle_open_timestamp_ms()
+    # Métodos de comparación ya están manejados por @dataclass
 
 
 if __name__ == '__main__':
@@ -257,11 +139,11 @@ if __name__ == '__main__':
     kt = KlineTimestamp(timestamp_ms=1633036800000, interval='1h', tzinfo='Europe/Madrid')
 
     # Probar get_candle_open_timestamp_ms
-    open_ts_ms = kt.get_candle_open_timestamp_ms()
+    open_ts_ms = kt.open
     print(f"Open timestamp (ms): {open_ts_ms}")
 
     # Probar get_candle_close_timestamp_ms
-    close_ts_ms = kt.get_candle_close_timestamp_ms()
+    close_ts_ms = kt.close
     print(f"Close timestamp (ms): {close_ts_ms}")
 
     # open and close as attributes
@@ -281,9 +163,9 @@ if __name__ == '__main__':
     print(f"Representation: {repr(kt)}")
 
     # Probar update_timezone
-    kt.update_timezone('UTC')
-    print(f"Updated timezone: {kt.tzinfo}")
-    print(kt)
+    kt_utc = kt.with_timezone('UTC')
+    print(f"Updated timezone: {kt_utc.tzinfo}")
+    print(kt_utc)
     # Probar __add__
     kt_added = kt + timedelta(hours=1)
     print(f"Timestamp after adding 1 hour: {kt_added.to_datetime()}")
