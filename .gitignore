@@ -97,3 +97,4 @@ old/
 *.7z
 !README.md
 !requirements.txt
+merge_github.sh

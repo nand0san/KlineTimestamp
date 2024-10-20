@@ -16,7 +16,7 @@ with open(requirements_path, encoding="utf-8") as f:
 
 setup(
     name="kline_timestamp",  # Nombre del paquete en minúsculas
-    version="0.1.5",
+    version="0.1.6",
     author="nand0san",
     author_email="",
     description="KlineTimestamp is a Python library designed to efficiently handle timestamps within discrete time intervals, commonly known as klines or candlesticks, often used in financial data analysis.",
@@ -32,4 +32,5 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    exclude_package_data={'': ['*.ipynb', '*.ipynb_checkpoints/*']},  # Exclusión de notebooks y checkpoints
 )
