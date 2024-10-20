@@ -12,6 +12,7 @@ class KlineTimestamp:
     tzinfo: Union[pytz.BaseTzInfo, str] = 'UTC'
     open: int = field(init=False)
     close: int = field(init=False)
+    tick_ms: int = field(init=False, repr=False)  # Declaración del campo tick_ms
 
     # Definición de tick_milliseconds como campo de clase
     tick_milliseconds: dict = field(default_factory=lambda: {
@@ -128,7 +129,11 @@ class KlineTimestamp:
         prev_timestamp_ms = self.open - self.tick_ms
         return KlineTimestamp(prev_timestamp_ms, self.interval, self.tzinfo)
 
-    # Métodos de comparación ya están manejados por @dataclass
+    def __hash__(self):
+        """
+        Genera un hash basado en el timestamp, intervalo y zona horaria para que la clase sea hashable.
+        """
+        return hash((self.timestamp_ms, self.interval, self.tzinfo.zone))
 
 
 if __name__ == '__main__':
@@ -166,6 +171,7 @@ if __name__ == '__main__':
     kt_utc = kt.with_timezone('UTC')
     print(f"Updated timezone: {kt_utc.tzinfo}")
     print(kt_utc)
+
     # Probar __add__
     kt_added = kt + timedelta(hours=1)
     print(f"Timestamp after adding 1 hour: {kt_added.to_datetime()}")
