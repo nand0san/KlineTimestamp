@@ -3,6 +3,8 @@
 
 KlineTimestamp is a Python library designed to efficiently handle timestamps within discrete time intervals, commonly known as klines or candlesticks, often used in financial data analysis. This library simplifies the management of Unix timestamps (in milliseconds) for applications that work with time series data, particularly those involving financial market data.
 
+Project: https://github.com/nand0san/KlineTimestamp/tree/github
+
 ## Features
 
 - **Calculate Opening and Closing Timestamps**: Easily obtain the opening and closing timestamps of a kline based on specified intervals.
@@ -254,7 +256,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/nand0san/kline_timestamp).
+Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/nand0san/KlineTimestamp/tree/github).
 
 ## Contact
 

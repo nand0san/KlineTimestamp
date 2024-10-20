@@ -1,12 +1,15 @@
 from typing import Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytz
 import pandas as pd
 
 
 class KlineTimestamp:
 
-    def __init__(self, timestamp_ms: int, interval: str, tzinfo='UTC'):
+    def __init__(self,
+                 timestamp_ms: int,
+                 interval: str,
+                 tzinfo: Union[pytz.timezone, str] = 'UTC'):
         """
         Initializes a new instance of the kline_timestamp class.
 
@@ -89,8 +92,9 @@ class KlineTimestamp:
 
         :return: The datetime object of the current open time for candle (K-line) in the provided time zone.
         """
-        dt_utc = datetime.utcfromtimestamp(self.get_candle_open_timestamp_ms() / 1000)
-        dt_utc = dt_utc.replace(tzinfo=pytz.utc)
+        # Convert the timestamp to a timezone-aware UTC datetime object
+        dt_utc = datetime.fromtimestamp(self.get_candle_open_timestamp_ms() / 1000, tz=timezone.utc)
+        # Convert the UTC datetime to the provided local timezone
         dt_local = dt_utc.astimezone(self.tzinfo)
         return dt_local
 
@@ -126,7 +130,7 @@ class KlineTimestamp:
         else:
             raise TypeError("tzinfo must be a string or pytz.timezone object")
 
-    def __add__(self, other: timedelta) -> 'kline_timestamp':
+    def __add__(self, other: timedelta) -> 'KlineTimestamp':
         """
         Adds a timedelta to this instance.
 
@@ -140,7 +144,7 @@ class KlineTimestamp:
         else:
             raise TypeError(f"Unsupported type for +: 'kline_timestamp' and '{type(other).__name__}'")
 
-    def __sub__(self, other: Union[timedelta, 'kline_timestamp']) -> Union['kline_timestamp', timedelta]:
+    def __sub__(self, other: Union[timedelta, 'KlineTimestamp']) -> Union['KlineTimestamp', timedelta]:
         """
         Subtracts a timedelta or another kline_timestamp from this instance.
 
@@ -157,7 +161,7 @@ class KlineTimestamp:
         else:
             raise TypeError(f"Unsupported type for -: 'kline_timestamp' and '{type(other).__name__}'")
 
-    def next(self) -> 'kline_timestamp':
+    def next(self) -> 'KlineTimestamp':
         """
         This method returns a new kline_timestamp object representing the next candle (K-line).
 
@@ -166,7 +170,7 @@ class KlineTimestamp:
         next_timestamp_ms = self.get_candle_open_timestamp_ms() + self.tick_ms
         return KlineTimestamp(next_timestamp_ms, interval=self.interval, tzinfo=self.tzinfo)
 
-    def prev(self) -> 'kline_timestamp':
+    def prev(self) -> 'KlineTimestamp':
         """
         This method returns a new kline_timestamp object representing the previous candle (K-line).
 
@@ -176,7 +180,7 @@ class KlineTimestamp:
         return KlineTimestamp(prev_timestamp_ms, interval=self.interval, tzinfo=self.tzinfo)
 
     # Métodos de comparación
-    def __eq__(self, other: 'kline_timestamp') -> bool:
+    def __eq__(self, other: 'KlineTimestamp') -> bool:
         """
         This method compares the current kline_timestamp instance with another instance and returns True if they are equal, False otherwise.
 
@@ -192,7 +196,7 @@ class KlineTimestamp:
         same_timestamp = self.get_candle_open_timestamp_ms() == other.get_candle_open_timestamp_ms()
         return same_interval and same_tzinfo and same_timestamp
 
-    def __lt__(self, other: 'kline_timestamp') -> bool:
+    def __lt__(self, other: 'KlineTimestamp') -> bool:
         """
         This method compares the current kline_timestamp instance with another instance and returns True if the current instance is less than the `other` instance, False otherwise.
 
@@ -205,7 +209,7 @@ class KlineTimestamp:
             return NotImplemented
         return self.get_candle_open_timestamp_ms() < other.get_candle_open_timestamp_ms()
 
-    def __le__(self, other: 'kline_timestamp') -> bool:
+    def __le__(self, other: 'KlineTimestamp') -> bool:
         """
         This method compares the current kline_timestamp instance with another instance and returns True if the current instance is less than or equal to the `other` instance, False otherwise.
 
@@ -218,7 +222,7 @@ class KlineTimestamp:
             return NotImplemented
         return self.get_candle_open_timestamp_ms() <= other.get_candle_open_timestamp_ms()
 
-    def __gt__(self, other: 'kline_timestamp') -> bool:
+    def __gt__(self, other: 'KlineTimestamp') -> bool:
         """
         This method compares the current kline_timestamp instance with another instance and returns True if the current instance is greater than the `other` instance, False otherwise.
 
@@ -231,7 +235,7 @@ class KlineTimestamp:
             return NotImplemented
         return self.get_candle_open_timestamp_ms() > other.get_candle_open_timestamp_ms()
 
-    def __ge__(self, other: 'kline_timestamp') -> bool:
+    def __ge__(self, other: 'KlineTimestamp') -> bool:
         """
         This method compares the current kline_timestamp instance with another instance and returns True if the current instance is greater than or equal to the `other` instance, False otherwise.
 
